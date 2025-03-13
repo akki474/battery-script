@@ -65,7 +65,7 @@ Sub UpdateBattery
   End If
 
   ' Overcharging warning (above 80% and unplugged)
-  If iPercent > 80 And Not bPluggedIn Then
+  If iPercent > 80 And bPluggedIn Then
     WarningMessage.innerText = "⚠️ Stop charging to preserve battery!"
     Window.ResizeTo w, h2
     If Not BatteryWarning Then
