@@ -65,13 +65,17 @@ Sub UpdateBattery
   End If
 
   ' Overcharging warning (above 80% and unplugged)
-  If iPercent > 80 And bPluggedIn Then
-    WarningMessage.innerText = "⚠️ Stop charging to preserve battery!"
-    Window.ResizeTo w, h2
-    If Not BatteryWarning Then
-      BatteryWarning = True
-      PlaySoundLoop()
-    End If
+  If iPercent > 80 And bCharging Then
+      WarningMessage.innerText = "⚠️ Stop charging to preserve battery!"
+      Window.ResizeTo w, h2
+      If Not BatteryWarning Then
+          BatteryWarning = True
+          PlaySoundLoop()
+      End If
+  ElseIf iPercent > 80 And Not bCharging Then
+      ' Stop alert if charger is unplugged after reaching 80%
+      BatteryWarning = False
+      StopSound()
   End If
 
   ' Low battery warning (below 20% and not charging)
@@ -79,9 +83,15 @@ Sub UpdateBattery
     WarningMessage.innerText = "⚠️ Low battery! Please charge now!"
     Window.ResizeTo w, h2
     If Not BatteryWarning Then
-      BatteryWarning = True
-      PlaySoundLoop()
+        BatteryWarning = True
+        PlaySoundLoop()
     End If
+  ElseIf iPercent >= 20 And bPluggedIn Then
+      ' Stop alert if charger is plugged in and battery is recovering
+      BatteryWarning = False
+      StopSound()
+      WarningMessage.innerText = ""
+      Window.ResizeTo w, h1
   End If
 End Sub
 </script>
