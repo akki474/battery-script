@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Battery Monitor</title>
+<meta charset="UTF-8">
+<hta:application
+  id=oHTA
+  icon=perfmon.exe
+  maximizeButton=no
+  minimizeButton=no
+  contextmenu=no
+  showintaskbar=no
+  scroll=no
+  caption=no
+  border=none
+>
+
+<script language="VBScript">
+Dim BatteryWarning
+BatteryWarning = False ' Track if sound alert is active
+
+' Resize window and position it at the top-right corner
+w=300: h1=100: h2=140
+Window.ResizeTo w, h1
+Window.MoveTo (screen.availWidth - w - 10), 10
+
+' Get battery capacity
+Set oWMI = GetObject("winmgmts:\\.\root\cimv2")
+Set oLocator = CreateObject("WbemScripting.SWbemLocator")
+Set oServices = oLocator.ConnectServer(".","root\wmi")
+Set oResults = oServices.ExecQuery("select * from batteryfullchargedcapacity")
+For Each oResult in oResults
+  iFull = oResult.FullChargedCapacity
+Next
+
+Sub window_onload
+  UpdateBattery()
+  UpdateBatteryHandle = Window.SetInterval("UpdateBattery()", 10000) ' Update every 10 seconds
+End Sub
+
+Sub UpdateBattery
+  Set oResults = oServices.ExecQuery("select * from batterystatus")
+  For Each oResult In oResults
+    iRemaining = oResult.RemainingCapacity
+    bCharging = oResult.Charging
+    bPluggedIn = oResult.PowerOnline
+  Next
+  iPercent = Int(iRemaining/iFull * 100)
+
+  ' Update UI
+  BatteryLevel.innerText = iPercent & "%"
+  If bPluggedIn Then 
+    BatteryIcon.innerText = "🔌 Plugged In"
+  Else 
+    BatteryIcon.innerText = "🔋 On Battery"
+  End If
+  
+  WarningMessage.innerText = ""
+  Window.ResizeTo w, h1
+
+  ' Stop sound if battery is normal
+  If (bCharging And iPercent < 80) Or (bPluggedIn And iPercent > 20) Then
+    BatteryWarning = False
+    StopSound()
+  End If
+
+  ' Overcharging warning (above 80% and unplugged)
+  If iPercent > 80 And Not bPluggedIn Then
+    WarningMessage.innerText = "⚠️ Stop charging to preserve battery!"
+    Window.ResizeTo w, h2
+    If Not BatteryWarning Then
+      BatteryWarning = True
+      PlaySoundLoop()
+    End If
+  End If
+
+  ' Low battery warning (below 20% and not charging)
+  If iPercent < 20 And Not bCharging Then
+    WarningMessage.innerText = "⚠️ Low battery! Please charge now!"
+    Window.ResizeTo w, h2
+    If Not BatteryWarning Then
+      BatteryWarning = True
+      PlaySoundLoop()
+    End If
+  End If
+End Sub
+</script>
+
+<script language="JavaScript">
+var warningActive = false;
+
+function PlaySoundLoop() {
+  if (!warningActive) {
+    warningActive = true;
+    playAlert();
+  }
+}
+
+function playAlert() {
+  if (warningActive) {
+    var voice = new ActiveXObject("SAPI.SpVoice");
+    voice.Speak("Battery Alert! Please check your charger!");
+    setTimeout(playAlert, 5000); // Repeat every 5 seconds
+  }
+}
+
+function StopSound() {
+  warningActive = false;
+}
+</script>
+
+<style>
+  body {
+    background-color: black;
+    color: white;
+    font-family: Arial, sans-serif;
+    font-size: 12pt;
+    text-align: center;
+    padding: 10px;
+  }
+  .battery-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid white;
+    padding: 15px;
+    border-radius: 10px;
+    width: 250px;
+  }
+  .battery-level {
+    font-size: 24pt;
+    font-weight: bold;
+    margin-top: 10px;
+  }
+  .battery-icon {
+    font-size: 14pt;
+    margin-top: 5px;
+  }
+  .warning {
+    color: yellow;
+    font-size: 12pt;
+    margin-top: 10px;
+  }
+</style>
+</head>
+
+<body>
+  <div class="battery-container">
+    <div class="battery-level" id="BatteryLevel">--%</div>
+    <div class="battery-icon" id="BatteryIcon">🔋 Checking...</div>
+    <div class="warning" id="WarningMessage"></div>
+  </div>
+</body>
+</html>
